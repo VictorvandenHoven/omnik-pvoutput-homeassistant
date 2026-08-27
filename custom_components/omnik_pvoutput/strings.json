@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Omnik Portal → PVOutput",
-        "description": "Enter your OmnikPortal and PVOutput credentials.",
+        "description": "Enter your OmnikPortal and PVOutput credentials. OmnikPortal is tested before the integration is created.",
         "data": {
           "omnik_api_url": "OmnikPortal API URL",
           "omnik_username": "OmnikPortal username",
@@ -12,6 +12,24 @@
           "omnik_inverter_id": "Omnik inverter ID",
           "pvoutput_api_key": "PVOutput API key",
           "pvoutput_system_id": "PVOutput system ID",
+          "interval": "Update interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to OmnikPortal.",
+      "invalid_auth": "OmnikPortal rejected the credentials or returned an API error.",
+      "unknown": "Unexpected error while testing OmnikPortal."
+    },
+    "abort": {
+      "already_configured": "This inverter is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Omnik Portal → PVOutput options",
+        "data": {
           "interval": "Update interval (seconds)"
         }
       }
