@@ -3,10 +3,10 @@
   "name": "Omnik Portal PVOutput",
   "codeowners": [],
   "config_flow": true,
-  "documentation": "https://github.com/",
+  "documentation": "https://github.com/VictorvandenHoven/omnik-pvoutput-homeassistant",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/",
+  "issue_tracker": "https://github.com/VictorvandenHoven/omnik-pvoutput-homeassistant/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.2.0"
 }
