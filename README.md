@@ -11,8 +11,21 @@ Home Assistant custom integration that polls the OmnikPortal API and forwards th
 - Stores the last sent measurement in the Home Assistant config entry
 - Configurable through the Home Assistant UI
 
-## HACS
+## Installation
 
-Add this GitHub repository to HACS as a custom repository with category `Integration`, then install `Omnik Portal PVOutput`.
+### HACS
 
-After installation, restart Home Assistant and go to Settings → Devices & services → Add integration.
+1. Open HACS.
+2. Go to **Integrations**.
+3. Select **Custom repositories** from the three-dot menu.
+4. Add:
+
+   `https://github.com/VictorvandenHoven/omnik-pvoutput-homeassistant`
+
+5. Select **Integration** as the category.
+6. Click **Add**.
+7. Search for **Omnik Portal PVOutput**.
+8. Click **Download**.
+9. Restart Home Assistant.
+10. Go to **Settings → Devices & services → Add integration**.
+11. Search for **Omnik Portal PVOutput**.
