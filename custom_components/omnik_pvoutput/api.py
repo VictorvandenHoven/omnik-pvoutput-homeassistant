@@ -5,10 +5,21 @@ from typing import Any
 
 from aiohttp import ClientSession
 
+from .const import PVOUTPUT_API_URL
+
+from aiohttp import BasicAuth
+
 
 class OmnikPortalApi:
-    def __init__(self, session: ClientSession, api_url: str, username: str, password: str,
-                 inverter: str, inverter_id: int) -> None:
+    def __init__(
+        self,
+        session: ClientSession,
+        api_url: str,
+        username: str,
+        password: str,
+        inverter: str,
+        inverter_id: int,
+    ) -> None:
         self._session = session
         self._api_url = api_url
         self._username = username
@@ -27,7 +38,7 @@ class OmnikPortalApi:
         async with self._session.post(
             self._api_url,
             json=payload,
-            auth=(self._username, self._password),
+            auth=BasicAuth(self._username, self._password),
             timeout=30,
         ) as response:
             response.raise_for_status()
@@ -62,10 +73,17 @@ class PVOutputApi:
         }
 
         async with self._session.post(
-            "https://pvoutput.org/service/r2/addstatus.jsp",
+            PVOUTPUT_API_URL,
             headers=headers,
             data=payload,
             timeout=30,
         ) as response:
             response.raise_for_status()
             return (await response.text()).strip()
+
+
+async def validate_omnik_connection(api: OmnikPortalApi) -> None:
+    """Validate credentials and that OmnikPortal returns usable data."""
+    data = await api.get_data()
+    if not data.get("data_day"):
+        raise RuntimeError("OmnikPortal returned no measurements for today")
