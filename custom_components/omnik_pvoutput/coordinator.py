@@ -13,6 +13,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import OmnikPortalApi, PVOutputApi
 from .const import (
+    ATTR_LAST_RESPONSE,
+    ATTR_LAST_SENT,
     CONF_INTERVAL,
     CONF_OMNIK_API_URL,
     CONF_OMNIK_INVERTER,
@@ -42,6 +44,7 @@ class OmnikCoordinator(DataUpdateCoordinator[OmnikData]):
         self.entry = entry
         data = entry.data
         session = async_get_clientsession(hass)
+
         self.omnik = OmnikPortalApi(
             session,
             data[CONF_OMNIK_API_URL],
@@ -55,60 +58,55 @@ class OmnikCoordinator(DataUpdateCoordinator[OmnikData]):
             data[CONF_PVOUTPUT_API_KEY],
             data[CONF_PVOUTPUT_SYSTEM_ID],
         )
-        self.last_sent_moment = entry.data.get("last_sent_moment")
-        self.last_pvoutput_response = entry.data.get("last_pvoutput_response")
+        self.last_sent_moment = data.get(ATTR_LAST_SENT)
+        self.last_pvoutput_response = data.get(ATTR_LAST_RESPONSE)
 
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             config_entry=entry,
-            update_interval=timedelta(seconds=int(data.get(CONF_INTERVAL, DEFAULT_INTERVAL))),
+            update_interval=timedelta(
+                seconds=int(entry.options.get(CONF_INTERVAL, DEFAULT_INTERVAL))
+            ),
         )
 
     async def _async_update_data(self) -> OmnikData:
         try:
             data = await self.omnik.get_data()
-        except (ClientError, TimeoutError, RuntimeError) as err:
+        except (ClientError, TimeoutError, RuntimeError, ValueError) as err:
             raise UpdateFailed(f"OmnikPortal error: {err}") from err
 
         data_day = data.get("data_day", [])
         if not data_day:
             raise UpdateFailed("OmnikPortal returned no data_day records")
 
-        measurement = data_day[-1]
-        total_kwh = float(data["data"][0]["watt_total"])
-        moment = measurement["moment"]
+        try:
+            measurement = data_day[-1]
+            total_kwh = float(data["data"][0]["watt_total"])
+            moment = measurement["moment"]
+        except (KeyError, IndexError, TypeError, ValueError) as err:
+            raise UpdateFailed(f"Unexpected OmnikPortal response: {err}") from err
 
+        last_error = None
         if moment != self.last_sent_moment:
             try:
                 response = await self.pvoutput.send(measurement, total_kwh)
             except (ClientError, TimeoutError, ValueError, KeyError) as err:
+                last_error = str(err)
                 _LOGGER.error("PVOutput update failed: %s", err)
-                return OmnikData(
-                    measurement=measurement,
-                    total_kwh=total_kwh,
-                    last_sent_moment=self.last_sent_moment,
-                    last_pvoutput_response=self.last_pvoutput_response,
-                    last_error=str(err),
+            else:
+                self.last_sent_moment = moment
+                self.last_pvoutput_response = response
+                self._save_state()
+                _LOGGER.info(
+                    "PVOutput updated: %s | %s W | %.1f °C | %.2f kWh | %s",
+                    moment,
+                    int(measurement["watt"]),
+                    float(measurement["temperature"]),
+                    total_kwh,
+                    response,
                 )
-
-            self.last_sent_moment = moment
-            self.last_pvoutput_response = response
-            self.hass.config_entries.async_update_entry(
-                self.entry,
-                data={**self.entry.data,
-                      "last_sent_moment": self.last_sent_moment,
-                      "last_pvoutput_response": self.last_pvoutput_response},
-            )
-            _LOGGER.info(
-                "PVOutput updated: %s | %s W | %.1f °C | %.2f kWh | %s",
-                moment,
-                int(measurement["watt"]),
-                float(measurement["temperature"]),
-                total_kwh,
-                response,
-            )
         else:
             _LOGGER.debug("Measurement %s already sent to PVOutput", moment)
 
@@ -117,9 +115,21 @@ class OmnikCoordinator(DataUpdateCoordinator[OmnikData]):
             total_kwh=total_kwh,
             last_sent_moment=self.last_sent_moment,
             last_pvoutput_response=self.last_pvoutput_response,
+            last_error=last_error,
+        )
+
+    def _save_state(self) -> None:
+        self.hass.config_entries.async_update_entry(
+            self.entry,
+            data={
+                **self.entry.data,
+                ATTR_LAST_SENT: self.last_sent_moment,
+                ATTR_LAST_RESPONSE: self.last_pvoutput_response,
+            },
         )
 
     async def async_send_now(self) -> bool:
-        """Fetch data immediately and send the newest measurement if needed."""
+        """Fetch and send the newest measurement when it has not been sent yet."""
+        previous = self.last_sent_moment
         await self.async_refresh()
-        return bool(self.last_sent_moment == self.data.last_sent_moment if self.data else False)
+        return self.last_sent_moment != previous
