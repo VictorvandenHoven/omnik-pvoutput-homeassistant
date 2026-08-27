@@ -12,3 +12,6 @@ CONF_INTERVAL = "interval"
 DEFAULT_OMNIK_API_URL = "https://api.omnikportal.net/v1/data"
 DEFAULT_INTERVAL = 300
 PVOUTPUT_API_URL = "https://pvoutput.org/service/r2/addstatus.jsp"
+
+ATTR_LAST_SENT = "last_sent_moment"
+ATTR_LAST_RESPONSE = "last_pvoutput_response"
