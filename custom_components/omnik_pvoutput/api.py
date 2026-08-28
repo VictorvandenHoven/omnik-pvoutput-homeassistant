@@ -9,7 +9,6 @@ from .const import PVOUTPUT_API_URL
 
 from aiohttp import BasicAuth
 
-
 class OmnikPortalApi:
     def __init__(
         self,
